@@ -1,13 +1,13 @@
-package common
+package network
 
 import (
-	"fmt"
 	"log"
 	"math/rand"
 	"sync"
 	"time"
 
 	zmq "github.com/pebbe/zmq4"
+	"github.com/soonkuk/zmq/lib/common"
 )
 
 type ReporterZmq struct {
@@ -23,7 +23,7 @@ func NewReporterZmq(id string) (*ReporterZmq, error) {
 		return nil, err
 	}
 	dealer.SetIdentity(id)
-	return &ReporterZmq{}, nil
+	return &ReporterZmq{Dealer: dealer}, nil
 }
 
 func (rpt *ReporterZmq) Bind(endpoint string) {
@@ -36,7 +36,6 @@ func (rpt *ReporterZmq) BindAndSendAndReceive(endpoint string) {
 	rpt.Dealer, _ = zmq.NewSocket(zmq.DEALER)
 	defer rpt.Dealer.Close()
 
-	set_id(rpt.Dealer)
 	rpt.Dealer.Connect(endpoint)
 
 	go func() {
@@ -57,7 +56,7 @@ func (rpt *ReporterZmq) BindAndSendAndReceive(endpoint string) {
 		}
 		if err == nil {
 			id, _ := rpt.Dealer.GetIdentity()
-			fmt.Println(msg[0], id)
+			log.Println(msg[0], id)
 		}
 		mu.Unlock()
 		sleep_time := rand.Intn(10000)
@@ -65,6 +64,34 @@ func (rpt *ReporterZmq) BindAndSendAndReceive(endpoint string) {
 	}
 }
 
+func (rpt *ReporterZmq) Send(m []byte) error {
+	rpt.mu.Lock()
+	_, err := rpt.Dealer.SendMessage(m)
+	rpt.mu.Unlock()
+	return common.HandleError(err)
+}
+
+func (rpt *ReporterZmq) Receive() {
+	for {
+		rpt.mu.Lock()
+		msg, err := rpt.Dealer.RecvMessage(zmq.DONTWAIT)
+		if err != nil {
+			time.Sleep(time.Duration(rand.Intn(100)) * time.Millisecond)
+		}
+		id, _ := rpt.Dealer.GetIdentity()
+		rpt.mu.Unlock()
+		if len(msg) != 0 {
+			log.Println(id, " : ", msg)
+		}
+		time.Sleep(time.Duration(100) * time.Millisecond)
+	}
+}
+
+func (rpt *ReporterZmq) Close() {
+	rpt.Dealer.Close()
+}
+
+/*
 func (rpt *ReporterZmq) ClientTask(endpoint string) {
 	var mu sync.Mutex
 
@@ -72,7 +99,6 @@ func (rpt *ReporterZmq) ClientTask(endpoint string) {
 	defer rpt.Dealer.Close()
 
 	//  Set random identity to make tracing easier
-	set_id(rpt.Dealer)
 	rpt.Dealer.Connect(endpoint)
 
 	go func() {
@@ -90,32 +116,9 @@ func (rpt *ReporterZmq) ClientTask(endpoint string) {
 		msg, err := rpt.Dealer.RecvMessage(zmq.DONTWAIT)
 		if err == nil {
 			id, _ := rpt.Dealer.GetIdentity()
-			fmt.Println(msg[0], id)
+			log.Println(msg[0], id)
 		}
 		mu.Unlock()
 	}
 }
-
-func (rpt *ReporterZmq) Send(m string) error {
-	rpt.mu.Lock()
-	_, err := rpt.Dealer.SendMessage(m)
-	rpt.mu.Unlock()
-	return HandleError(err)
-}
-
-func (rpt *ReporterZmq) Receive() (string, string) {
-	rpt.mu.Lock()
-	reply, _ := rpt.Dealer.RecvMessage(zmq.DONTWAIT)
-	id, _ := rpt.Dealer.GetIdentity()
-	rpt.mu.Unlock()
-	return string(reply[0]), id
-}
-
-func (rpt *ReporterZmq) Close() {
-	rpt.Dealer.Close()
-}
-
-func set_id(soc *zmq.Socket) {
-	identity := fmt.Sprintf("%04X-%04X", rand.Intn(0x10000), rand.Intn(0x10000))
-	soc.SetIdentity(identity)
-}
+*/

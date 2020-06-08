@@ -7,33 +7,29 @@ import (
 	"time"
 
 	"github.com/soonkuk/zmq/lib/common"
+	"github.com/soonkuk/zmq/lib/network"
 )
 
 var mu sync.Mutex
 
 type NodeBand struct {
-	config      ConfigNode
-	location    common.Location
-	temperature float32
-	hrv         int16
-	ecg         int16
-	timestamp   time.Time
-	reporter    *common.ReporterZmq
+	config         ConfigNode
+	timestamp      time.Time
+	queryResponser *common.QueryResponser
+	reporter       *network.ReporterZmq
 }
 
 func NewNodeBand(config ConfigNode) (*NodeBand, error) {
-	var reporter *common.ReporterZmq
 	var err error
 	node := &NodeBand{
 		config: config,
 	}
-	reporter, err = common.NewReporterZmq(config.deviceID)
+	node.reporter, err = network.NewReporterZmq(config.deviceID)
 	if err != nil {
 		log.Print(err)
 		return nil, err
 	}
-	node.reporter = reporter
-
+	node.queryResponser = common.NewQueryResponser()
 	return node, nil
 }
 
@@ -42,42 +38,45 @@ func (n *NodeBand) Init() {
 }
 
 func (n *NodeBand) Run() {
-	go n.Report("hello")
-	// go n.handleMessage()
+	go n.Report()
+	n.HandleMessage()
 	// n.Stop()
 }
 
 func (n *NodeBand) InitAndRun() {
-	// go n.reporter.BindAndSendAndReceive(common.DefaultReporterEndPoint)
+	go n.reporter.BindAndSendAndReceive(common.DefaultReporterEndPoint)
 	// go n.reporter.ClientTask(common.DefaultReporterEndPoint)
-	go n.Report("hello")
-	go n.HandleMessage()
+	// go n.Report("hello")
+	// go n.HandleMessage()
 	// n.Stop()
 }
 
 func (n *NodeBand) HandleMessage() {
-	for {
-		var m, id string
-		m, id = n.reporter.Receive()
-		log.Print("#node_band: ", id, m)
-	}
+	go n.reporter.Receive()
 }
 
-func (n *NodeBand) Report(m string) {
-
+func (n *NodeBand) Report() {
 	var err error
+	var b []byte
+	c := make(chan common.Query, 100)
+	go n.queryResponser.Run(c)
+
 	for {
+		data := <-c
 		mu.Lock()
-		if err = n.reporter.Send(time.Now().String()); err != nil {
+		b, err = data.ToJson()
+		if err != nil {
+			continue
+		}
+		id, _ := n.reporter.Dealer.GetIdentity()
+		log.Println(id, ":", data)
+		if err = n.reporter.Send(b); err != nil {
 			log.Print("#node_band: ", err)
 		}
 		mu.Unlock()
-		id, _ := n.reporter.Dealer.GetIdentity()
-		log.Print(id)
-		sleep_time := rand.Intn(10000)
+		sleep_time := rand.Intn(1000)
 		time.Sleep(time.Duration(sleep_time) * time.Millisecond)
 	}
-
 	/*
 		for {
 			var m, id string

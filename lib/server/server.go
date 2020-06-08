@@ -7,17 +7,18 @@ import (
 	zmq "github.com/pebbe/zmq4"
 
 	"github.com/soonkuk/zmq/lib/common"
+	"github.com/soonkuk/zmq/lib/network"
 )
 
 type ServerZmq struct {
-	collector    *common.CollectorZmq
+	collector    *network.CollectorZmq
 	reporterList map[ /* reporter deviceID */ string] /* device type */ string
 }
 
 func NewServerZmq() (*ServerZmq, error) {
-	var collector *common.CollectorZmq
+	var collector *network.CollectorZmq
 	var err error
-	collector, err = common.NewCollectorZmq()
+	collector, err = network.NewCollectorZmq()
 	if err != nil {
 		log.Print(err)
 		return nil, err
@@ -62,5 +63,6 @@ func (s *ServerZmq) Listen() {
 }
 
 func (s *ServerZmq) Stop() {
+	log.Print("#################### server closed")
 	s.collector.Close()
 }

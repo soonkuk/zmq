@@ -1,7 +1,9 @@
-package common
+package network
 
 import (
 	"log"
+
+	"github.com/soonkuk/zmq/lib/common"
 
 	zmq "github.com/pebbe/zmq4"
 )
@@ -26,13 +28,13 @@ func NewCollectorZmq() (*CollectorZmq, error) {
 func (c *CollectorZmq) Bind(endpoint string) error {
 	var err error
 	err = c.Router.Bind(endpoint)
-	return HandleError(err)
+	return common.HandleError(err)
 }
 
 // Send
 func (c *CollectorZmq) Send(m string) error {
 	_, err := c.Router.SendMessage(m)
-	return HandleError(err)
+	return common.HandleError(err)
 }
 
 func (c *CollectorZmq) Receive() (head []string, tail []string, err error) {

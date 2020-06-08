@@ -1,4 +1,4 @@
-package common
+package network
 
 type Reporter interface {
 	Send() error

@@ -1,8 +1,9 @@
 package server
 
 import (
-	"fmt"
+	"log"
 	"math/rand"
+	"time"
 
 	zmq "github.com/pebbe/zmq4"
 )
@@ -16,16 +17,18 @@ func server_worker(i int) {
 	for {
 		//  The DEALER socket gives us the reply envelope and message
 		msg, _ := worker.RecvMessage(0)
+		var response []string
 		identity, content := pop(msg)
-		fmt.Println(i, identity, content)
+		log.Println(i, identity, content)
 		//  Send 0..4 replies back
-
-		replies := rand.Intn(5)
-		for reply := 0; reply < replies; reply++ {
-			//  Sleep for some fraction of a second
-			// time.Sleep(time.Duration(rand.Intn(10)+1) * time.Millisecond)
-			worker.SendMessage(identity, content)
+		if verifyMsg(content) {
+			response = append(response, "Success")
+		} else {
+			response = append(response, "Fail")
 		}
+		// replies := rand.Intn(5)
+		time.Sleep(time.Duration(rand.Intn(10)+1) * time.Millisecond)
+		worker.SendMessage(identity, response)
 
 	}
 }
@@ -39,4 +42,12 @@ func pop(msg []string) (head, tail []string) {
 		tail = msg[1:]
 	}
 	return
+}
+
+func verifyMsg(msg []string) bool {
+	if len(msg) < 1 {
+		return false
+	} else {
+		return true
+	}
 }
