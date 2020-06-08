@@ -12,7 +12,6 @@ import (
 var mu sync.Mutex
 
 type NodeBand struct {
-	mu          sync.Mutex
 	config      ConfigNode
 	location    common.Location
 	temperature float32
@@ -49,21 +48,18 @@ func (n *NodeBand) Run() {
 }
 
 func (n *NodeBand) InitAndRun() {
-	go n.reporter.BindAndSendAndReceive(common.DefaultReporterEndPoint)
-	// go n.handleMessage()
+	// go n.reporter.BindAndSendAndReceive(common.DefaultReporterEndPoint)
+	// go n.reporter.ClientTask(common.DefaultReporterEndPoint)
+	go n.Report("hello")
+	go n.HandleMessage()
 	// n.Stop()
 }
 
 func (n *NodeBand) HandleMessage() {
 	for {
 		var m, id string
-		var err error
-		n.mu.Lock()
-		if m, id, err = n.reporter.Receive(); err != nil {
-			log.Print("#node_band: ", err)
-		}
+		m, id = n.reporter.Receive()
 		log.Print("#node_band: ", id, m)
-		n.mu.Unlock()
 	}
 }
 

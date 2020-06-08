@@ -25,7 +25,7 @@ func init() {
 			fmt.Println("Run client simulator!")
 			for i := 0; i < int(nodeCount); i++ {
 				// go node_task("device"+strconv.Itoa(time.Now().Nanosecond()), "sband")
-				go node_task("device-"+strconv.Itoa(i), "sband")
+				node_task("device-"+strconv.Itoa(i), "sband")
 				time.Sleep(time.Duration(rand.Intn(1000)) * time.Millisecond)
 			}
 			count := 0
@@ -64,6 +64,7 @@ func node_task(id string, dtype string) {
 		log.Print(err)
 		os.Exit(1)
 	}
-	n.Init()
-	n.Run()
+	// n.Init()
+	// n.Run()
+	n.InitAndRun()
 }
