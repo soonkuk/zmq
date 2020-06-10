@@ -1,11 +1,15 @@
 package server
 
 import (
+	"encoding/json"
 	"log"
 	"math/rand"
 	"time"
 
+	"github.com/fatih/color"
 	zmq "github.com/pebbe/zmq4"
+	"github.com/soonkuk/zmq/lib/common"
+	"github.com/vmihailenco/msgpack"
 )
 
 func server_worker(i int) {
@@ -19,8 +23,17 @@ func server_worker(i int) {
 		msg, _ := worker.RecvMessage(0)
 		var response []string
 		identity, content := pop(msg)
-		log.Println(i, identity, content)
+		var data common.Query
+		msgpack.Unmarshal([]byte(content[0]), &data)
 		//  Send 0..4 replies back
+		d, _ := json.Marshal(data)
+		if data.Temperature > 37.5 {
+			color.Set(color.FgRed)
+			log.Println(i, identity, string(d))
+			color.Unset()
+		} else {
+			log.Println(i, identity, string(d))
+		}
 		if verifyMsg(content) {
 			response = append(response, "Success")
 		} else {

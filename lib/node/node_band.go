@@ -29,7 +29,12 @@ func NewNodeBand(config ConfigNode) (*NodeBand, error) {
 		log.Print(err)
 		return nil, err
 	}
-	node.queryResponser = common.NewQueryResponser()
+	if config.status == CorrectNode {
+		node.queryResponser = common.NewQueryResponser(common.CorrectResponser)
+	} else {
+		node.queryResponser = common.NewQueryResponser(common.FailResponser)
+	}
+
 	return node, nil
 }
 
@@ -74,8 +79,7 @@ func (n *NodeBand) Report() {
 			log.Print("#node_band: ", err)
 		}
 		mu.Unlock()
-		sleep_time := rand.Intn(1000)
-		time.Sleep(time.Duration(sleep_time) * time.Millisecond)
+		time.Sleep(time.Duration(rand.Intn(n.config.interval)) * time.Second)
 	}
 	/*
 		for {

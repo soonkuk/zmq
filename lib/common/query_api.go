@@ -1,41 +1,52 @@
 package common
 
 import (
-	"encoding/json"
 	"errors"
 	"math/rand"
 	"time"
+
+	"github.com/vmihailenco/msgpack"
 )
 
 type QueryResponser struct {
 	data      Query
 	QueryChan chan Query
+	status    ResponserStatus
 }
 
-func NewQueryResponser() *QueryResponser {
+func NewQueryResponser(status ResponserStatus) *QueryResponser {
 	d := NewQuery()
-	return &QueryResponser{data: d}
+	return &QueryResponser{data: d, status: status}
 }
 
 func (qr *QueryResponser) Run(c chan Query) {
 	// qr.QueryChan = c
+	var temperatureRange []float32
+	if qr.status == CorrectResponser {
+		temperatureRange = []float32{35.0, 37.5}
+	} else {
+		temperatureRange = []float32{37.5, 42.0}
+	}
+
 	defer close(c)
 	for {
 		time.Sleep(time.Duration(1000) * time.Millisecond)
-		qr.data.Temperature = 35.0 + rand.Float32()*7.0
+		qr.data.Temperature = temperatureRange[0] + rand.Float32()*(temperatureRange[1]-temperatureRange[0])
 		qr.data.Hrv = rand.Intn(33) + 49
 		latitude := 35.13 + rand.Float32()*2.63
 		longitude := 35.13 + rand.Float32()*2.63
 		qr.data.Location, _ = NewLocation(latitude, longitude)
+		qr.data.TimeStamp = time.Now().UTC()
 		c <- qr.data
 	}
 }
 
 type Query struct {
-	Location    location `json:"location"`
-	Hrv         int      `json:"hrv"`
-	Ecg         int16    `json:"ecg"`
-	Temperature float32  `json:"temperature"`
+	Location    location  `json:"location"`
+	Hrv         int       `json:"hrv"`
+	Ecg         int16     `json:"ecg"`
+	Temperature float32   `json:"temperature"`
+	TimeStamp   time.Time `json:"timeStamp"`
 }
 
 func NewQuery() Query {
@@ -43,7 +54,7 @@ func NewQuery() Query {
 }
 
 func (q *Query) ToJson() ([]byte, error) {
-	return json.Marshal(q)
+	return msgpack.Marshal(q)
 }
 
 type location struct {
@@ -67,3 +78,10 @@ func NewLocation(lat float32, longi float32) (location, error) {
 
 	return loc, nil
 }
+
+type ResponserStatus string
+
+const (
+	CorrectResponser ResponserStatus = "CorrectResponser"
+	FailResponser    ResponserStatus = "FailResponser"
+)
