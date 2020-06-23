@@ -6,16 +6,16 @@ import (
 
 	zmq "github.com/pebbe/zmq4"
 
-	"github.com/soonkuk/zmq/lib/common"
 	"github.com/soonkuk/zmq/lib/network"
 )
 
-type ServerZmq struct {
+type ServerImpl struct {
+	config       ConfigServer
 	collector    *network.CollectorZmq
 	reporterList map[ /* reporter deviceID */ string] /* device type */ string
 }
 
-func NewServerZmq() (*ServerZmq, error) {
+func NewServerImpl(config ConfigServer) (*ServerImpl, error) {
 	var collector *network.CollectorZmq
 	var err error
 	collector, err = network.NewCollectorZmq()
@@ -23,25 +23,26 @@ func NewServerZmq() (*ServerZmq, error) {
 		log.Print(err)
 		return nil, err
 	}
-	server := &ServerZmq{
+	server := &ServerImpl{
 		collector: collector,
+		config:    config,
 	}
 	return server, nil
 }
 
-func (s *ServerZmq) Init() error {
-	if err := s.collector.Bind(common.DefaultCollectorEndPoint); err != nil {
+func (s *ServerImpl) Init() error {
+	if err := s.collector.Bind(s.config.endpoint); err != nil {
 		log.Print("#server: ", err)
 		return err
 	}
 	return nil
 }
 
-func (s *ServerZmq) Run() {
+func (s *ServerImpl) Run() {
 	backend, _ := zmq.NewSocket(zmq.DEALER)
 	defer backend.Close()
 	backend.Bind("inproc://backend")
-	for i := 0; i < 5; i++ {
+	for i := 0; i < s.config.workers; i++ {
 		go server_worker(i)
 	}
 	err := zmq.Proxy(s.collector.Router, backend, nil)
@@ -52,7 +53,7 @@ func (s *ServerZmq) Run() {
 	// s.Listen()
 }
 
-func (s *ServerZmq) Listen() {
+func (s *ServerImpl) Listen() {
 	for {
 		if id, m, err := s.collector.Receive(); err != nil {
 			log.Print("#server: ", err)
@@ -62,7 +63,7 @@ func (s *ServerZmq) Listen() {
 	}
 }
 
-func (s *ServerZmq) Stop() {
+func (s *ServerImpl) Stop() {
 	log.Print("#################### server closed")
 	s.collector.Close()
 }

@@ -1,4 +1,9 @@
-total : 100
-fail : 2
-reportDuration : 10
+total : 500
+fail : 50
+test : 0
+workers : 50
+reportDuration : 2
 deviceType: "smartBand"
+endpoint: "13.125.170.254"
+# endpoint: "127.0.0.1"
+port: "54325"
