@@ -1,9 +1,9 @@
 total : 1000
-fail : 50
+fail : 10
 test : 0
 workers : 50
 reportDuration : 600
-groupID : "yellow"
+groupID : "cyan"
 deviceType: "smartBand"
 # endpoint: "13.125.170.254"
 # endpoint: "127.0.0.1"

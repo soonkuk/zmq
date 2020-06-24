@@ -71,20 +71,15 @@ func (rpt *ReporterZmq) Send(m []byte) error {
 	return common.HandleError(err)
 }
 
-func (rpt *ReporterZmq) Receive() {
-	for {
-		rpt.mu.Lock()
-		msg, err := rpt.Dealer.RecvMessage(zmq.DONTWAIT)
-		if err != nil {
-			time.Sleep(time.Duration(rand.Intn(100)) * time.Millisecond)
-		}
-		id, _ := rpt.Dealer.GetIdentity()
-		rpt.mu.Unlock()
-		if len(msg) != 0 {
-			log.Println(id, " : ", msg)
-		}
-		time.Sleep(time.Duration(100) * time.Millisecond)
+func (rpt *ReporterZmq) Receive() (id string, msg []string, err error) {
+	// rpt.mu.Lock()
+	msg, err = rpt.Dealer.RecvMessage(zmq.DONTWAIT)
+	if err != nil {
+		time.Sleep(time.Duration(rand.Intn(100)) * time.Millisecond)
 	}
+	id, _ = rpt.Dealer.GetIdentity()
+	// rpt.mu.Unlock()
+	return
 }
 
 func (rpt *ReporterZmq) Close() {

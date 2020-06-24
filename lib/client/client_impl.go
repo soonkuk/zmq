@@ -1,7 +1,6 @@
 package client
 
 import (
-	"fmt"
 	"log"
 	"math/rand"
 	"sync"
@@ -14,13 +13,13 @@ import (
 var mu sync.Mutex
 
 type ClientImpl struct {
-	config         ConfigClient
+	config         *ConfigClient
 	timestamp      time.Time
 	queryResponser *common.QueryResponser
 	reporter       *network.ReporterZmq
 }
 
-func NewClientImpl(config ConfigClient) (*ClientImpl, error) {
+func NewClientImpl(config *ConfigClient) (*ClientImpl, error) {
 	var err error
 	clnt := &ClientImpl{
 		config: config,
@@ -51,7 +50,7 @@ func (c *ClientImpl) Run() {
 	} else {
 		go c.Report()
 	}
-	c.HandleMessage()
+	go c.HandleMessage()
 	// c.Stop()
 }
 
@@ -64,7 +63,20 @@ func (c *ClientImpl) InitAndRun() {
 }
 
 func (c *ClientImpl) HandleMessage() {
-	go c.reporter.Receive()
+	for {
+		mu.Lock()
+		id, msg, err := c.reporter.Receive()
+		if err != nil {
+			//time.Sleep(time.Duration(rand.Intn(100)) * time.Millisecond)
+		}
+		if len(msg) != 0 {
+			log.Println(id, " : ", msg)
+			c.config.counter.Recv++
+			log.Printf("Count messages - Send message : %d #### Received message : %d", c.config.counter.Send, c.config.counter.Recv)
+		}
+		mu.Unlock()
+		time.Sleep(time.Duration(100) * time.Millisecond)
+	}
 }
 
 func (c *ClientImpl) SendHrtbt() {
@@ -84,6 +96,7 @@ func (c *ClientImpl) SendHrtbt() {
 		if err = c.reporter.Send([]byte(val)); err != nil {
 			log.Print("#client: ", err)
 		}
+		c.config.counter.Send++
 		mu.Unlock()
 		time.Sleep(time.Duration(rand.Intn(c.config.interval)) * time.Second)
 	}
@@ -108,25 +121,25 @@ func (c *ClientImpl) Report() {
 	go c.queryResponser.Run(ch)
 
 	for {
+		time.Sleep(time.Duration(rand.Intn(c.config.interval)) * time.Second)
 		data := <-ch
 		val, ok := data.(common.Query)
-		fmt.Println(val)
 		if !ok {
 			log.Print("#client: ", err)
 		}
 		mu.Lock()
 		b, err = val.ToJson()
-		fmt.Println(string(b))
 		if err != nil {
 			continue
 		}
-		id, _ := c.reporter.Dealer.GetIdentity()
-		log.Println(id, ":", data)
+		// id, _ := c.reporter.Dealer.GetIdentity()
+		// log.Println(id, ":", data)
 		if err = c.reporter.Send(b); err != nil {
 			log.Print("#client: ", err)
 		}
+		c.config.counter.Send++
+		// log.Println("Count send message : ", c.config.counter.Send)
 		mu.Unlock()
-		time.Sleep(time.Duration(rand.Intn(c.config.interval)) * time.Second)
 	}
 	/*
 		for {
